@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, ArrowLeftRight, Copy, Check } from 'lucide-react';
 
 export default function Home() {
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [meetingDateTime, setMeetingDateTime] = useState('');
   const [fromTimezone, setFromTimezone] = useState('cleveland');
-  const [convertedTime, setConvertedTime] = useState<any>(null);
+  const [convertedTime, setConvertedTime] = useState<{
+    source: { time: string; zone: string };
+    target: { time: string; zone: string };
+  } | { error: string } | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
@@ -15,7 +17,8 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      // Force re-render for live time updates
+      setIsMounted(true);
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -23,13 +26,13 @@ export default function Home() {
   // Get current time in Cleveland (Eastern Time)
   const getClevelandTime = () => {
     const now = new Date();
-    const clevelandTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const timeInTimezone = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
     
-    const dayOfWeek = clevelandTime.toLocaleDateString('en-US', { weekday: 'short' });
-    const month = clevelandTime.toLocaleDateString('en-US', { month: 'short' });
-    const day = clevelandTime.toLocaleDateString('en-US', { day: '2-digit' });
-    const year = clevelandTime.getFullYear();
-    const time = clevelandTime.toLocaleTimeString('en-US', { 
+    const dayOfWeek = timeInTimezone.toLocaleDateString('en-US', { weekday: 'short' });
+    const month = timeInTimezone.toLocaleDateString('en-US', { month: 'short' });
+    const day = timeInTimezone.toLocaleDateString('en-US', { day: '2-digit' });
+    const year = timeInTimezone.getFullYear();
+    const time = timeInTimezone.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       second: '2-digit',
@@ -42,13 +45,13 @@ export default function Home() {
   // Get current time in Nablus (Palestine Time - UTC+2)
   const getNablusTime = () => {
     const now = new Date();
-    const nablusTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Hebron' }));
+    const timeInTimezone = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Hebron' }));
     
-    const dayOfWeek = nablusTime.toLocaleDateString('en-US', { weekday: 'short' });
-    const month = nablusTime.toLocaleDateString('en-US', { month: 'short' });
-    const day = nablusTime.toLocaleDateString('en-US', { day: '2-digit' });
-    const year = nablusTime.getFullYear();
-    const time = nablusTime.toLocaleTimeString('en-US', { 
+    const dayOfWeek = timeInTimezone.toLocaleDateString('en-US', { weekday: 'short' });
+    const month = timeInTimezone.toLocaleDateString('en-US', { month: 'short' });
+    const day = timeInTimezone.toLocaleDateString('en-US', { day: '2-digit' });
+    const year = timeInTimezone.getFullYear();
+    const time = timeInTimezone.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       second: '2-digit',
@@ -70,7 +73,7 @@ export default function Home() {
   };
 
   // Convert meeting time
-  const convertMeetingTime = () => {
+  const convertMeetingTime = React.useCallback(() => {
     if (!meetingDateTime) {
       setConvertedTime(null);
       return;
@@ -89,7 +92,6 @@ export default function Home() {
       // Input is Cleveland time, convert to Nablus
       sourceTime = new Date(meetingDateTime + (meetingDateTime.includes('T') ? '' : 'T00:00'));
       // Treat input as Cleveland time
-      const clevelandTime = new Date(sourceTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
       const utcTime = new Date(sourceTime.getTime() + (sourceTime.getTimezoneOffset() * 60000));
       targetTime = new Date(utcTime.toLocaleString('en-US', { timeZone: 'Asia/Hebron' }));
       
@@ -98,23 +100,12 @@ export default function Home() {
     } else {
       // Input is Nablus time, convert to Cleveland
       sourceTime = new Date(meetingDateTime + (meetingDateTime.includes('T') ? '' : 'T00:00'));
-      const nablusTime = new Date(sourceTime.toLocaleString('en-US', { timeZone: 'Asia/Hebron' }));
       const utcTime = new Date(sourceTime.getTime() + (sourceTime.getTimezoneOffset() * 60000));
       targetTime = new Date(utcTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
       
       sourceZone = 'Nablus (Palestine Time)';
       targetZone = 'Cleveland (Eastern Time)';
     }
-
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    };
 
     const formatDateTime = (date: Date) => {
       // Get individual components directly from the date
@@ -141,7 +132,7 @@ export default function Home() {
         zone: targetZone
       }
     });
-  };
+  }, [meetingDateTime, fromTimezone]);
 
   useEffect(() => {
     convertMeetingTime();
@@ -305,7 +296,7 @@ export default function Home() {
             </div>
 
             {/* Conversion Result */}
-            {convertedTime && !convertedTime.error && (
+            {convertedTime && !('error' in convertedTime) && (
               <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
                 <h3 className="font-semibold text-gray-800 mb-3">Conversion Result:</h3>
                 <div className="space-y-3">
@@ -343,7 +334,7 @@ export default function Home() {
               </div>
             )}
 
-            {convertedTime && convertedTime.error && (
+            {convertedTime && 'error' in convertedTime && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-red-700">{convertedTime.error}</p>
               </div>
@@ -355,9 +346,9 @@ export default function Home() {
         <div className="mt-8 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
           <h3 className="font-semibold text-yellow-800 mb-2">Quick Reference:</h3>
           <ul className="text-yellow-700 space-y-1 text-sm">
-            <li>• Cleveland observes Daylight Saving Time (March - November)</li>
-            <li>• Palestine stopped observing DST in 2018, staying at UTC+2 year-round</li>
-            <li>• Time difference varies between 7-8 hours depending on US DST</li>
+            <li>Cleveland observes Daylight Saving Time (March - November)</li>
+            <li>Palestine stopped observing DST in 2018, staying at UTC+2 year-round</li>
+            <li>Time difference varies between 7-8 hours depending on US DST</li>
           </ul>
         </div>
       </div>
