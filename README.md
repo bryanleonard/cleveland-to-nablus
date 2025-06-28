@@ -1,6 +1,6 @@
 ## Purpose
 A simple time conversion tool between Cleveland, OH and Nablus, Palestine.
-
+Can be viewed at [https://o2p-time.vercel.app](https://o2p-time.vercel.app)
 
 ## Getting Started
 
