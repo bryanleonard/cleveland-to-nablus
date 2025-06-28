@@ -36,7 +36,7 @@ export default function Home() {
       hour12: true 
     });
     
-    return `${dayOfWeek} ${month} ${day}, ${year} at ${time}`;
+    return `${dayOfWeek} ${month} ${day} ${year} ${time}`;
   };
 
   // Get current time in Nablus (Palestine Time - UTC+2)
@@ -55,7 +55,7 @@ export default function Home() {
       hour12: true 
     });
     
-    return `${dayOfWeek} ${month} ${day}, ${year} at ${time}`;
+    return `${dayOfWeek} ${month} ${day} ${year} ${time}`;
   };
 
   // Calculate time difference
@@ -64,7 +64,7 @@ export default function Home() {
     const clevelandTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
     const nablusTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Hebron' }));
     
-    const diffHours = Math.round((nablusTime - clevelandTime) / (1000 * 60 * 60));
+    const diffHours = Math.round((nablusTime.getTime() - clevelandTime.getTime()) / (1000 * 60 * 60));
     
     return diffHours > 0 ? `+${diffHours}` : `${diffHours}`;
   };
